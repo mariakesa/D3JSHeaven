@@ -1,0 +1,41 @@
+<script>
+  import * as d3 from "d3";
+
+  let data = [
+    {y:1, score:0.95}, {y:1, score:0.85}, {y:1, score:0.82},
+    {y:0, score:0.80}, {y:0, score:0.72}, {y:1, score:0.70},
+    {y:0, score:0.60}, {y:0, score:0.55}, {y:1, score:0.51},
+    {y:0, score:0.30}
+  ];
+
+  // Precompute ROC points
+  function rocPoints(data){
+    const sorted = [...data].sort((a,b)=>b.score-a.score);
+    const P = d3.sum(sorted,d=>d.y);
+    const N = sorted.length - P;
+    let tp=0, fp=0, pts=[];
+    for (const d of sorted){
+      if(d.y) tp++; else fp++;
+      pts.push({FPR:fp/N, TPR:tp/P});
+    }
+    return pts;
+  }
+
+  let roc = rocPoints(data);
+</script>
+
+<svg width="400" height="400">
+  <g transform="translate(40,20)">
+    <line x1="0" y1="340" x2="340" y2="0" stroke="gray" stroke-dasharray="4,4"/>
+    {#each roc as p,i}
+      <circle cx={p.FPR*340} cy={340 - p.TPR*340} r="4" fill="steelblue">
+        <title>Threshold {i}</title>
+      </circle>
+      {#if i>0}
+        <line x1={roc[i-1].FPR*340} y1={340-roc[i-1].TPR*340}
+              x2={p.FPR*340}       y2={340-p.TPR*340}
+              stroke="steelblue"/>
+      {/if}
+    {/each}
+  </g>
+</svg>
