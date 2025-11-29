@@ -84,13 +84,13 @@ function createProjectionScatter(targetDiv, options = {}) {
             .style("opacity", 0);
 
         let hideTimeout = null;
-
+        const jitterScale = 0.6; 
         // Scatter points
         svg.selectAll("circle")
             .data(data)
             .enter()
             .append("circle")
-            .attr("cx", d => xScale(d.x))
+            .attr("cx", d => xScale(d.x + (Math.random() - 0.5) * jitterScale))
             .attr("cy", d => yScale(d.y))
             .attr("r", 4)
             .attr("fill", d => top3.has(d.idx) ? topColor : normalColor)
