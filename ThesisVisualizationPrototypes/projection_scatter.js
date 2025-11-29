@@ -21,9 +21,16 @@ function createProjectionScatter(targetDiv, options = {}) {
             img: `data_dev/scene_${String(i).padStart(3,'0')}.png`
         }));
 
-        // Identify TOP 3 neuron responses
+        // Sort by neuron response
         let sorted = [...data].sort((a, b) => b.y - a.y);
-        let top3 = new Set(sorted.slice(0, 3).map(d => d.idx));
+
+        // PINK POINTS (0, 1, 2, and 4 in sorted list)
+        let pinkIndices = new Set([
+            sorted[0].idx,
+            sorted[1].idx,
+            sorted[2].idx,
+            sorted[4].idx
+        ]);
 
         // Sunset Bliss palette
         const normalColor = "#9AD1D4"; // light blue
@@ -84,7 +91,8 @@ function createProjectionScatter(targetDiv, options = {}) {
             .style("opacity", 0);
 
         let hideTimeout = null;
-        const jitterScale = 0.6; 
+        const jitterScale = 0.6;
+
         // Scatter points
         svg.selectAll("circle")
             .data(data)
@@ -93,12 +101,11 @@ function createProjectionScatter(targetDiv, options = {}) {
             .attr("cx", d => xScale(d.x + (Math.random() - 0.5) * jitterScale))
             .attr("cy", d => yScale(d.y))
             .attr("r", 4)
-            .attr("fill", d => top3.has(d.idx) ? topColor : normalColor)
+            .attr("fill", d => pinkIndices.has(d.idx) ? topColor : normalColor)  // ✔ FIXED
             .attr("opacity", 0.85)
             .style("transition", "0.15s")
             .on("mouseover", function(event, d) {
 
-                // Prevent tooltip flicker when moving between points
                 if (hideTimeout) clearTimeout(hideTimeout);
 
                 d3.select(this)
@@ -132,7 +139,5 @@ function createProjectionScatter(targetDiv, options = {}) {
                         .style("opacity", 0);
                 }, 150);
             });
-
     });
 }
-
