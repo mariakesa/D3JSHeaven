@@ -32,6 +32,10 @@ function createProjectionScatter(targetDiv, options = {}) {
             sorted[4].idx
         ]);
 
+        pinkIndices.add(47);
+
+        pinkIndices.add(15);
+
         // Sunset Bliss palette
         const normalColor = "#9AD1D4"; // light blue
         const topColor = "#EA2B7F";    // pink
