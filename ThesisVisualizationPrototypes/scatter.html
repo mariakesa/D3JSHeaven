@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ViT PC1 vs Neuron Response — Interactive Scatter</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 40px;
+        background: #fafafa;
+        color: #222;
+    }
+
+    h2 {
+        text-align: center;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    #stats {
+        text-align: center;
+        font-size: 15px;
+        margin-bottom: 20px;
+        color: #444;
+    }
+
+    #chart {
+        display: flex;
+        justify-content: center;
+    }
+
+    /* Tooltip styling */
+    .tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: white;
+        color: #111;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        text-align: center;
+        width: 190px;
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+        border: 1px solid #ddd;
+    }
+
+    .tooltip img {
+        width: 180px;
+        height: auto;
+        display: block;
+        margin-bottom: 6px;
+        border-radius: 4px;
+    }
+</style>
+
+</head>
+<body>
+
+<h2>ViT PC1 vs Neuron Response (Interactive Scatter)</h2>
+
+<div id="stats">
+    <b>Spearman correlation:</b> 0.1776943776103961 &nbsp;&nbsp;
+    <b>p-value:</b> 0.054222308621634074
+</div>
+
+<div id="chart"></div>
+
+<script>
+
+// Load JSON data
+Promise.all([
+    fetch("data_dev/scores_vit_full.json").then(r => r.json()),
+    fetch("data_dev/neuron_scores.json").then(r => r.json())
+]).then(([scores_vit_full, neuron_scores]) => {
+
+    let data = scores_vit_full.map((x, i) => ({
+        x: x,
+        y: neuron_scores[i],
+        idx: i,
+        img: `data_dev/scene_${String(i).padStart(3,'0')}.png`
+    }));
+
+    const width = 900;
+    const height = 550;
+    const margin = {top: 60, right: 40, bottom: 60, left: 70};
+
+    const svg = d3.select("#chart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .style("background", "white")
+        .style("border-radius", "8px")
+        .style("box-shadow", "0px 3px 12px rgba(0,0,0,0.08)");
+
+    // Scales
+    const xScale = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.x)).nice()
+        .range([margin.left, width - margin.right]);
+
+    const yScale = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.y)).nice()
+        .range([height - margin.bottom, margin.top]);
+
+    // Gridlines
+    const xGrid = d3.axisBottom(xScale)
+        .tickSize(-height + margin.top + margin.bottom)
+        .tickFormat("");
+
+    const yGrid = d3.axisLeft(yScale)
+        .tickSize(-width + margin.left + margin.right)
+        .tickFormat("");
+
+    svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(xGrid)
+        .selectAll("line")
+        .attr("stroke", "#eaeaea");
+
+    svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(yGrid)
+        .selectAll("line")
+        .attr("stroke", "#eaeaea");
+
+    // Axes
+    svg.append("g")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(xScale));
+
+    svg.append("g")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(yScale));
+
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 20)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "16px")
+        .text("ViT PC1 Score");
+
+    svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 25)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "16px")
+        .text("Neuron Response");
+
+    // Tooltip
+    const tooltip = d3.select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+    // Scatter points
+    svg.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", d => xScale(d.x))
+        .attr("cy", d => yScale(d.y))
+        .attr("r", 5)
+        .attr("fill", "#4C72B0")
+        .attr("opacity", 0.85)
+        .style("transition", "0.15s")
+        .on("mouseover", function(event, d) {
+            d3.select(this)
+                .transition().duration(150)
+                .attr("r", 8)
+                .attr("opacity", 1);
+
+            tooltip.html(`
+                <img src="${d.img}">
+                <b>Image:</b> ${d.idx}<br>
+                <b>ViT PC1:</b> ${d.x.toFixed(2)}<br>
+                <b>Neuron:</b> ${d.y.toFixed(3)}
+            `)
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 20) + "px")
+            .transition().duration(150)
+            .style("opacity", 1);
+        })
+        .on("mousemove", function(event) {
+            tooltip.style("left", (event.pageX + 15) + "px")
+                   .style("top", (event.pageY - 20) + "px");
+        })
+        .on("mouseout", function() {
+            d3.select(this)
+                .transition().duration(150)
+                .attr("r", 5)
+                .attr("opacity", 0.85);
+
+            tooltip.transition().duration(150)
+                .style("opacity", 0);
+        });
+
+});
+
+</script>
+
+</body>
+</html>
