@@ -1,17 +1,19 @@
 function createProjectionScatter(targetDiv, options = {}) {
 
     const {
-        width = 700,
-        height = 450,
+        width = 600,
+        height = 350,
         vitPath = "data_dev/scores_vit_full.json",
         neuronPath = "data_dev/neuron_scores.json",
     } = options;
 
+    // Load JSON files
     Promise.all([
         fetch(vitPath).then(r => r.json()),
         fetch(neuronPath).then(r => r.json())
     ]).then(([scores_vit_full, neuron_scores]) => {
 
+        // Dataset construction
         let data = scores_vit_full.map((x, i) => ({
             x: x,
             y: neuron_scores[i],
@@ -19,16 +21,22 @@ function createProjectionScatter(targetDiv, options = {}) {
             img: `data_dev/scene_${String(i).padStart(3,'0')}.png`
         }));
 
-        // Top 3 max response
+        // Identify TOP 3 neuron responses
         let sorted = [...data].sort((a, b) => b.y - a.y);
         let top3 = new Set(sorted.slice(0, 3).map(d => d.idx));
 
+        // Sunset Bliss palette
+        const normalColor = "#9AD1D4"; // light blue
+        const topColor = "#EA2B7F";    // pink
+
+        // SVG setup
         const margin = {top: 40, right: 40, bottom: 50, left: 60};
         const svg = d3.select(targetDiv)
             .append("svg")
             .attr("width", width)
             .attr("height", height);
 
+        // Scales
         const xScale = d3.scaleLinear()
             .domain(d3.extent(data, d => d.x)).nice()
             .range([margin.left, width - margin.right]);
@@ -37,7 +45,7 @@ function createProjectionScatter(targetDiv, options = {}) {
             .domain(d3.extent(data, d => d.y)).nice()
             .range([height - margin.bottom, margin.top]);
 
-
+        // Axes
         svg.append("g")
             .attr("transform", `translate(0, ${height - margin.bottom})`)
             .call(d3.axisBottom(xScale));
@@ -46,6 +54,7 @@ function createProjectionScatter(targetDiv, options = {}) {
             .attr("transform", `translate(${margin.left}, 0)`)
             .call(d3.axisLeft(yScale));
 
+        // Axis labels
         svg.append("text")
             .attr("x", width / 2)
             .attr("y", height - 10)
@@ -61,6 +70,7 @@ function createProjectionScatter(targetDiv, options = {}) {
             .attr("font-size", "14px")
             .text("Neuron Response");
 
+        // Tooltip
         const tooltip = d3.select("body")
             .append("div")
             .style("position", "absolute")
@@ -73,25 +83,27 @@ function createProjectionScatter(targetDiv, options = {}) {
             .style("font-size", "12px")
             .style("opacity", 0);
 
-        // ==== SUNSET BLISS PALETTE ====
-        const normalColor = "#9AD1D4";  // light blue
-        const topColor = "#EA2B7F";     // pink
+        let hideTimeout = null;
 
+        // Scatter points
         svg.selectAll("circle")
             .data(data)
             .enter()
             .append("circle")
             .attr("cx", d => xScale(d.x))
             .attr("cy", d => yScale(d.y))
-            .attr("r", 5)
+            .attr("r", 4)
             .attr("fill", d => top3.has(d.idx) ? topColor : normalColor)
             .attr("opacity", 0.85)
             .style("transition", "0.15s")
             .on("mouseover", function(event, d) {
 
+                // Prevent tooltip flicker when moving between points
+                if (hideTimeout) clearTimeout(hideTimeout);
+
                 d3.select(this)
                     .transition().duration(120)
-                    .attr("r", 8)
+                    .attr("r", 5)
                     .attr("opacity", 1);
 
                 tooltip.html(`
@@ -109,13 +121,16 @@ function createProjectionScatter(targetDiv, options = {}) {
                        .style("top", (event.pageY - 20) + "px");
             })
             .on("mouseout", function() {
+
                 d3.select(this)
                     .transition().duration(120)
-                    .attr("r", 5)
+                    .attr("r", 4)
                     .attr("opacity", 0.85);
 
-                tooltip.transition().duration(120)
-                    .style("opacity", 0);
+                hideTimeout = setTimeout(() => {
+                    tooltip.transition().duration(150)
+                        .style("opacity", 0);
+                }, 150);
             });
 
     });
